@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 
+
 public interface ServerInterface extends Remote {
 	final static int ACK = 100;
 	/**
@@ -24,7 +25,11 @@ public interface ServerInterface extends Remote {
 	 * 
 	 */
 	final static int INVALID_OPERATION = 202;
-
+	
+	final static String DFServerUniqyeName = "dsf_name";
+	
+	final static int SERVER_PORT = 5555;
+	
 	/**
 	 * the client reads the file from the server
 	 * 

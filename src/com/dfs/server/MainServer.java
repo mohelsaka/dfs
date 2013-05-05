@@ -2,7 +2,12 @@ package com.dfs.server;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.rmi.AlreadyBoundException;
 import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
+import java.rmi.server.UnicastRemoteObject;
+import java.util.ArrayList;
 
 import com.ds.interfaces.ClientInterface;
 import com.ds.interfaces.FileContents;
@@ -11,7 +16,8 @@ import com.ds.interfaces.ServerInterface;
 
 
 public class MainServer implements ServerInterface{
-
+	ArrayList<ClientInterface> clients;
+	
 	@Override
 	public FileContents read(String fileName) throws FileNotFoundException,
 			IOException, RemoteException {
@@ -48,8 +54,8 @@ public class MainServer implements ServerInterface{
 	@Override
 	public boolean registerClient(ClientInterface client)
 			throws RemoteException {
-		// TODO Auto-generated method stub
-		return false;
+		this.clients.add(client);
+		return true;
 	}
 
 	@Override
@@ -58,5 +64,13 @@ public class MainServer implements ServerInterface{
 		// TODO Auto-generated method stub
 		return false;
 	}
-
+	
+	public static void main(String[] args) throws RemoteException, AlreadyBoundException {
+		MainServer server = new MainServer();
+		ServerInterface serverStub = (ServerInterface) UnicastRemoteObject.exportObject(server, 0);
+		
+		Registry registry = LocateRegistry.getRegistry();
+		registry.bind(DFServerUniqyeName, serverStub);
+		System.out.println("server is running ...");
+	}
 }
