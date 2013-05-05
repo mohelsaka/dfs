@@ -28,7 +28,7 @@ public class MainServer implements ServerInterface{
 	String cache_path = directory_path + "cache/";
 	
 	HashSet<String> lockedFiles = new HashSet<String>();
-	Hashtable<Long, String> transactions = new Hashtable<Long, String>(); 
+	Hashtable<Long, Transaction> transactions = new Hashtable<Long, Transaction>(); 
 	
 	@Override
 	public FileContents read(String fileName) throws FileNotFoundException,
@@ -60,7 +60,7 @@ public class MainServer implements ServerInterface{
 		
 		// add lock on the file
 		lockedFiles.add(fileName);
-		transactions.put(txnId, fileName);
+		transactions.put(txnId, new Transaction(fileName, Transaction.STARTED, txnId));
 		return txnId;
 	}
 
@@ -73,6 +73,11 @@ public class MainServer implements ServerInterface{
 			return INVALID_TRANSACTION_ID;
 		}
 		
+		// check if the transaction has been already committed
+		if (transactions.get(txnID).state == Transaction.COMMITED) {
+			return INVALID_OPERATION;
+		}
+		
 		// build cache file name
 		String fileName = cache_path + txnID + "_" + msgSeqNum;
 		FileOutputStream outstream = new FileOutputStream(new File(fileName));
@@ -82,13 +87,12 @@ public class MainServer implements ServerInterface{
 		outstream.flush();
 		outstream.close();
 		
-		return 0;
+		return ACK;
 	}
 
 	@Override
 	public int commit(long txnID, long numOfMsgs)
 			throws MessageNotFoundException, RemoteException {
-		// TODO Auto-generated method stub
 		return 0;
 	}
 
