@@ -3,12 +3,14 @@ package com.dfs.server;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.rmi.AlreadyBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.UUID;
 
@@ -23,6 +25,10 @@ public class MainServer implements ServerInterface{
 	
 	// default directory
 	String directory_path = "~/dfs/";
+	String cache_path = directory_path + "cache/";
+	
+	HashSet<String> lockedFiles = new HashSet<String>();
+	Hashtable<Long, String> transactions = new Hashtable<Long, String>(); 
 	
 	@Override
 	public FileContents read(String fileName) throws FileNotFoundException,
@@ -32,6 +38,7 @@ public class MainServer implements ServerInterface{
 		FileInputStream instream = new FileInputStream(new File(directory_path + fileName));
 		byte[] buffer = new byte[FileContents.BUFFER_SIZE];
 		int contentlength = instream.read(buffer);
+		instream.close();
 		
 		// copying the buffer in smaller content byte array to be sent
 		byte[] content = new byte[contentlength];
@@ -43,14 +50,38 @@ public class MainServer implements ServerInterface{
 
 	@Override
 	public long newTxn(String fileName) throws RemoteException, IOException {
-		// TODO Auto-generated method stub
-		return 0;
+		// check if the file is currently being locked by other transaction
+		if(lockedFiles.contains(fileName)){
+			throw new IOException("File is locked");
+		}
+		
+		// generate new transaction id
+		long txnId = System.currentTimeMillis();
+		
+		// add lock on the file
+		lockedFiles.add(fileName);
+		transactions.put(txnId, fileName);
+		return txnId;
 	}
 
 	@Override
 	public int write(long txnID, long msgSeqNum, byte[] data)
 			throws RemoteException, IOException {
-		// TODO Auto-generated method stub
+		
+		// check if the transaction id is correct
+		if (!transactions.containsKey(txnID)) {
+			return INVALID_TRANSACTION_ID;
+		}
+		
+		// build cache file name
+		String fileName = cache_path + txnID + "_" + msgSeqNum;
+		FileOutputStream outstream = new FileOutputStream(new File(fileName));
+		
+		// safely write data and close opened stream
+		outstream.write(data);
+		outstream.flush();
+		outstream.close();
+		
 		return 0;
 	}
 
