@@ -7,7 +7,8 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.ArrayList;
+import java.util.Hashtable;
+import java.util.UUID;
 
 import com.ds.interfaces.ClientInterface;
 import com.ds.interfaces.FileContents;
@@ -16,7 +17,7 @@ import com.ds.interfaces.ServerInterface;
 
 
 public class MainServer implements ServerInterface{
-	ArrayList<ClientInterface> clients;
+	Hashtable<String, ClientInterface> clients;
 	
 	@Override
 	public FileContents read(String fileName) throws FileNotFoundException,
@@ -54,15 +55,43 @@ public class MainServer implements ServerInterface{
 	@Override
 	public boolean registerClient(ClientInterface client)
 			throws RemoteException {
-		this.clients.add(client);
-		return true;
+		String auth_token  = client.getAuthenticationToken();
+		
+		if(auth_token == null){
+			// generate new auth token
+			auth_token = UUID.randomUUID().toString();
+			client.setAuthenticationToken(auth_token);
+			
+			// add this new client to the list of authenticated clients
+			this.clients.put(auth_token, client);
+			return true;
+		}else{
+			if(clients.containsKey(auth_token))
+				return true;
+			else
+				return false;
+		}
 	}
 
 	@Override
 	public boolean unregisterClient(ClientInterface client)
 			throws RemoteException {
-		// TODO Auto-generated method stub
-		return false;
+		String auth_token  = client.getAuthenticationToken();
+		
+		if(auth_token == null){
+			// Unresisted client
+			return false;
+		}else{
+			if(clients.containsKey(auth_token)){
+				// safely remove this client
+				clients.remove(auth_token);
+				return true;
+			}
+			else{
+				// unrecognized auth token, safely return false 
+				return false;
+			}
+		}
 	}
 	
 	public static void main(String[] args) throws RemoteException, AlreadyBoundException {
