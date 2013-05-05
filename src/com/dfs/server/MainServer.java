@@ -1,5 +1,7 @@
 package com.dfs.server;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.rmi.AlreadyBoundException;
@@ -17,13 +19,26 @@ import com.ds.interfaces.ServerInterface;
 
 
 public class MainServer implements ServerInterface{
-	Hashtable<String, ClientInterface> clients;
+	Hashtable<String, ClientInterface> clients = new Hashtable<String, ClientInterface>();
+	
+	// default directory
+	String directory_path = "~/dfs/";
 	
 	@Override
 	public FileContents read(String fileName) throws FileNotFoundException,
 			IOException, RemoteException {
-		// TODO Auto-generated method stub
-		return null;
+		
+		// Note: only file of size less that BUFFER_SIZE can be handled correctly.
+		FileInputStream instream = new FileInputStream(new File(directory_path + fileName));
+		byte[] buffer = new byte[FileContents.BUFFER_SIZE];
+		int contentlength = instream.read(buffer);
+		
+		// copying the buffer in smaller content byte array to be sent
+		byte[] content = new byte[contentlength];
+		System.arraycopy(buffer, 0, content, 0, contentlength);
+		
+		// return FileContent instance
+		return new FileContents(content);
 	}
 
 	@Override
