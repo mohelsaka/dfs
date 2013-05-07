@@ -4,12 +4,15 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.rmi.AlreadyBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.UUID;
@@ -91,10 +94,126 @@ public class MainServer implements ServerInterface{
 	}
 
 	@Override
-	public int commit(long txnID, long numOfMsgs)
+	public int commit(final long txnID, long numOfMsgs)
 			throws MessageNotFoundException, RemoteException {
-		return 0;
+		
+		// check if the transaction id is correct
+		if (!transactions.containsKey(txnID)) {
+			return INVALID_TRANSACTION_ID;
+		}
+		
+		// check if the transaction has been already committed
+		if (transactions.get(txnID).state == Transaction.COMMITED) {
+			// the client me request resending the ack message
+			return ACK;
+		}
+		
+		// get all cached files by this transaction
+		File[] cachedFiles = new File(cache_path).listFiles(new CacheFilesFilter(txnID));
+		
+		// check if there are unreceived messages and report them to the client
+		if (cachedFiles.length < numOfMsgs) {
+			long [] msgsIDs = new long [cachedFiles.length];
+			
+			// convert msgsID to array of Long
+			for (int i = 0; i < msgsIDs.length; i++) {
+				String fname = cachedFiles[(int) i].getName();
+				msgsIDs[i] = Long.parseLong(fname.substring(fname.indexOf('_') + 1));
+			}
+			
+			// prepare exception to be thrown
+			MessageNotFoundException exception = new MessageNotFoundException();
+			exception.setMsgNum(findLostMessagesIDs(msgsIDs, numOfMsgs));
+			
+			throw exception;
+		}
+		
+		// append cached data to the file
+		Transaction tx = transactions.get(txnID);
+		try {
+			// create new file if it is not exist yet.
+			File fout = new File(tx.fileName);
+			fout.createNewFile();
+			
+			FileOutputStream outsream = new FileOutputStream(fout, true);
+			
+			byte [] buffer = new byte[FileContents.BUFFER_SIZE];
+			for (int i = 1; i <= numOfMsgs; i++) {
+				FileInputStream instream = new FileInputStream(new File("" + txnID + '_' + i));
+				
+				int len = 0;
+				while((len = instream.read(buffer)) != 0){
+					outsream.write(buffer, 0, len);
+				}
+				
+				instream.close();
+			}
+			
+			// flush and close file output stream
+			outsream.flush();
+			outsream.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+			// TODO: unhandeled yet
+		}
+		
+		commitTransaction(cachedFiles, tx);
+		
+		return ACK;
 	}
+	
+	/**
+	 * clear cached files, release file lock and set the transaction as commited.
+	 * */
+	private synchronized void commitTransaction(File[] cachedFiles, Transaction tx){
+		for (File file : cachedFiles) {
+			file.delete();
+		}
+		lockedFiles.remove(tx.fileName);
+		tx.state = Transaction.COMMITED;
+	}
+	
+	/**
+	 * getting ids if message that are nore received.
+	 * 
+	 * @param msgsIDs array of all received messages
+	 * @param numOfMsgs the total number of message that should be received.
+	 * 
+	 * @return array of all missing messages ids
+	 * */
+	private int[] findLostMessagesIDs(long [] msgsIDs, long numOfMsgs){
+		Arrays.sort(msgsIDs);
+		
+		int missedMessagesNumner = (int)numOfMsgs - msgsIDs.length; 
+		int[] missedMessages = new int[missedMessagesNumner];
+		int mIndex = 0;
+		
+		for (int i = 1; i < msgsIDs.length; i++) {
+			if ((msgsIDs[i] - msgsIDs[i - 1]) != 1) {
+				for (long j = msgsIDs[i-1] + 1; j < msgsIDs[i]; j++) {
+					missedMessages[mIndex++] = (int)j;
+				}
+			}
+		}
+		return missedMessages;
+	}
+	
+	/**
+	 * FilenameFilter used to filter cached files for specific transaction
+	 * */
+	class CacheFilesFilter implements FilenameFilter{
+		long txnID = 0;
+		
+		public boolean accept(File dir, String name) {
+			name = name.substring(0, name.indexOf('_'));
+			return name.equals("" + txnID);
+		}
+		
+		CacheFilesFilter(long txnID) {
+			this.txnID = txnID;
+		}
+	}
+	
 
 	@Override
 	public int abort(long txnID) throws RemoteException {
