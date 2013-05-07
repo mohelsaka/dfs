@@ -157,20 +157,22 @@ public class MainServer implements ServerInterface{
 			// TODO: unhandeled yet
 		}
 		
-		commitTransaction(cachedFiles, tx);
+		clearTransaction(txnID, Transaction.COMMITED);
 		
 		return ACK;
 	}
 	
 	/**
-	 * clear cached files, release file lock and set the transaction as commited.
+	 * clear cached files, release file lock and set a new state for the transaction
 	 * */
-	private synchronized void commitTransaction(File[] cachedFiles, Transaction tx){
+	private synchronized void clearTransaction(long txnID, int txnNewState){
+		File[] cachedFiles = new File(cache_path).listFiles(new CacheFilesFilter(txnID));
 		for (File file : cachedFiles) {
 			file.delete();
 		}
+		Transaction tx = transactions.get(txnID);
 		lockedFiles.remove(tx.fileName);
-		tx.state = Transaction.COMMITED;
+		tx.state = txnNewState;
 	}
 	
 	/**
@@ -217,8 +219,26 @@ public class MainServer implements ServerInterface{
 
 	@Override
 	public int abort(long txnID) throws RemoteException {
-		// TODO Auto-generated method stub
-		return 0;
+		// check if the transaction id is correct
+		if (!transactions.containsKey(txnID)) {
+			return INVALID_TRANSACTION_ID;
+		}
+		
+		// check if the transaction has been already committed
+		if (transactions.get(txnID).state == Transaction.COMMITED) {
+			// aborting commited transaction is invalid operation
+			return INVALID_OPERATION;
+		}
+		
+		// check if the transaction has been already aborted
+		if (transactions.get(txnID).state == Transaction.ABORTED) {
+			return ACK;
+		}
+		
+		// clear all changes made by this transaction
+		clearTransaction(txnID, Transaction.ABORTED);
+		
+		return ACK;
 	}
 
 	@Override
