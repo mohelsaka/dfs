@@ -11,7 +11,6 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Hashtable;
@@ -29,6 +28,7 @@ public class MainServer implements ServerInterface{
 	// default directory
 	String directory_path = System.getProperty("user.home") + "/dfs/";
 	String cache_path = directory_path + "cache/";
+	String log_path = directory_path + "log/";
 	
 	HashSet<String> lockedFiles = new HashSet<String>();
 	Hashtable<Long, Transaction> transactions = new Hashtable<Long, Transaction>(); 
@@ -77,7 +77,7 @@ public class MainServer implements ServerInterface{
 		}
 		
 		// check if the transaction has been already committed
-		if (transactions.get(txnID).state == Transaction.COMMITED) {
+		if (transactions.get(txnID).getState() == Transaction.COMMITED) {
 			return INVALID_OPERATION;
 		}
 		
@@ -103,7 +103,7 @@ public class MainServer implements ServerInterface{
 		}
 		
 		// check if the transaction has been already committed
-		if (transactions.get(txnID).state == Transaction.COMMITED) {
+		if (transactions.get(txnID).getState() == Transaction.COMMITED) {
 			// the client me request resending the ack message
 			return ACK;
 		}
@@ -132,7 +132,7 @@ public class MainServer implements ServerInterface{
 		Transaction tx = transactions.get(txnID);
 		try {
 			// create new file if it is not exist yet.
-			File fout = new File(tx.fileName);
+			File fout = new File(tx.getFileName());
 			fout.createNewFile();
 			
 			FileOutputStream outsream = new FileOutputStream(fout, true);
@@ -171,8 +171,8 @@ public class MainServer implements ServerInterface{
 			file.delete();
 		}
 		Transaction tx = transactions.get(txnID);
-		lockedFiles.remove(tx.fileName);
-		tx.state = txnNewState;
+		lockedFiles.remove(tx.getFileName());
+		tx.setState(txnNewState);
 	}
 	
 	/**
@@ -225,13 +225,13 @@ public class MainServer implements ServerInterface{
 		}
 		
 		// check if the transaction has been already committed
-		if (transactions.get(txnID).state == Transaction.COMMITED) {
+		if (transactions.get(txnID).getState() == Transaction.COMMITED) {
 			// aborting commited transaction is invalid operation
 			return INVALID_OPERATION;
 		}
 		
 		// check if the transaction has been already aborted
-		if (transactions.get(txnID).state == Transaction.ABORTED) {
+		if (transactions.get(txnID).getState() == Transaction.ABORTED) {
 			return ACK;
 		}
 		
