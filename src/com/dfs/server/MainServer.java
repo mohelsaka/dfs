@@ -27,7 +27,7 @@ public class MainServer implements ServerInterface{
 	Hashtable<String, ClientInterface> clients = new Hashtable<String, ClientInterface>();
 	
 	// default directory
-	String directory_path = "~/dfs/";
+	String directory_path = System.getProperty("user.home") + "/dfs/";
 	String cache_path = directory_path + "cache/";
 	
 	HashSet<String> lockedFiles = new HashSet<String>();
