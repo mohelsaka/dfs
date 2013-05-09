@@ -13,7 +13,7 @@ public class Logger {
 	public static final String WRITE_LOG_ENTRY = "WMSG";
 	
 	private static final String LOG_FILE_PATH = "log";
-	private static BufferedWriter log;
+	protected static BufferedWriter log;
 	
 	/**
 	 * Initilaizes the logger and opening stream on log file or create it
@@ -64,7 +64,7 @@ public class Logger {
 		writeLogEntry(WRITE_LOG_ENTRY, msg);
 	}
 
-	private static void writeLogEntry(String entryType, String msg){
+	protected static void writeLogEntry(String entryType, String msg){
 		try {
 			log.write(String.format("%s:%d", entryType, System.currentTimeMillis()));
 			log.write('\t');
