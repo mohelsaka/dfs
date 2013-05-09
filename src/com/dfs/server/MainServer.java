@@ -37,6 +37,11 @@ public class MainServer implements ServerInterface{
 	public FileContents read(String fileName) throws FileNotFoundException,
 			IOException, RemoteException {
 		
+		// check if the file is currently being locked by other transaction
+		if(lockedFiles.contains(fileName)){
+			throw new IOException("File is locked");
+		}
+		
 		// Note: only file of size less that BUFFER_SIZE can be handled correctly.
 		FileInputStream instream = new FileInputStream(new File(directory_path + fileName));
 		byte[] buffer = new byte[FileContents.BUFFER_SIZE];
