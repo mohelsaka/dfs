@@ -16,6 +16,7 @@ import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.UUID;
 
+import com.dfs.log.Logger;
 import com.ds.interfaces.ClientInterface;
 import com.ds.interfaces.FileContents;
 import com.ds.interfaces.MessageNotFoundException;
@@ -52,6 +53,8 @@ public class MainServer implements ServerInterface{
 		byte[] content = new byte[contentlength];
 		System.arraycopy(buffer, 0, content, 0, contentlength);
 		
+		Logger.logReadFile(fileName);
+		
 		// return FileContent instance
 		return new FileContents(content);
 	}
@@ -68,7 +71,11 @@ public class MainServer implements ServerInterface{
 		
 		// add lock on the file
 		lockedFiles.add(fileName);
-		transactions.put(txnId, new Transaction(fileName, Transaction.STARTED, txnId));
+		
+		// create transaction object and log it
+		Transaction tx = new Transaction(fileName, Transaction.STARTED, txnId);
+		Logger.logTransaction(tx);
+		transactions.put(txnId, tx);
 		return txnId;
 	}
 
@@ -95,6 +102,7 @@ public class MainServer implements ServerInterface{
 		outstream.flush();
 		outstream.close();
 		
+		Logger.logWriteRequest(txnID, msgSeqNum, data.length);
 		return ACK;
 	}
 
@@ -163,6 +171,7 @@ public class MainServer implements ServerInterface{
 		}
 		
 		clearTransaction(txnID, Transaction.COMMITED);
+		Logger.logTransaction(tx);
 		
 		return ACK;
 	}
@@ -243,6 +252,7 @@ public class MainServer implements ServerInterface{
 		// clear all changes made by this transaction
 		clearTransaction(txnID, Transaction.ABORTED);
 		
+		Logger.logTransaction(transactions.get(txnID));
 		return ACK;
 	}
 
