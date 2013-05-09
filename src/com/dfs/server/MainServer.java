@@ -16,6 +16,7 @@ import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.UUID;
 
+import com.dfs.heartbeats.HeartbeatsResponder;
 import com.dfs.log.Logger;
 import com.ds.interfaces.ClientInterface;
 import com.ds.interfaces.FileContents;
@@ -23,7 +24,7 @@ import com.ds.interfaces.MessageNotFoundException;
 import com.ds.interfaces.ServerInterface;
 
 
-public class MainServer implements ServerInterface{
+public class MainServer implements ServerInterface, HeartbeatsResponder{
 	Hashtable<String, ClientInterface> clients = new Hashtable<String, ClientInterface>();
 	
 	// default directories
@@ -33,6 +34,8 @@ public class MainServer implements ServerInterface{
 	
 	HashSet<String> lockedFiles = new HashSet<String>();
 	Hashtable<Long, Transaction> transactions = new Hashtable<Long, Transaction>(); 
+	
+	public static final String MAIN_SERVER_HEARTBEAT_NAME = "main_server_responder";
 	
 	@Override
 	public FileContents read(String fileName) throws FileNotFoundException,
@@ -297,13 +300,23 @@ public class MainServer implements ServerInterface{
 			}
 		}
 	}
-	
+
+	@Override
+	public boolean isAlive() throws RemoteException {
+		return true;
+	}
+
 	public static void main(String[] args) throws RemoteException, AlreadyBoundException {
 		MainServer server = new MainServer();
 		ServerInterface serverStub = (ServerInterface) UnicastRemoteObject.exportObject(server, 0);
+		HeartbeatsResponder heartbeatResponderStub = (HeartbeatsResponder) UnicastRemoteObject.exportObject(server, 0);
 		
 		Registry registry = LocateRegistry.getRegistry();
-		registry.bind(DFServerUniqyeName, serverStub);
+		registry.bind(DFSERVER_UNIQUE_NAME, serverStub);
+		registry.bind(MAIN_SERVER_HEARTBEAT_NAME, heartbeatResponderStub);
+		
 		System.out.println("server is running ...");
 	}
+
+
 }

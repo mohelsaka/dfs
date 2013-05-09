@@ -26,7 +26,7 @@ public interface ServerInterface extends Remote {
 	 */
 	final static int INVALID_OPERATION = 202;
 	
-	final static String DFServerUniqyeName = "dsf_name";
+	final static String DFSERVER_UNIQUE_NAME = "dsf_name";
 	
 	final static int SERVER_PORT = 5555;
 	
