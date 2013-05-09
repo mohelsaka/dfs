@@ -25,7 +25,7 @@ import com.ds.interfaces.ServerInterface;
 public class MainServer implements ServerInterface{
 	Hashtable<String, ClientInterface> clients = new Hashtable<String, ClientInterface>();
 	
-	// default directory
+	// default directories
 	String directory_path = System.getProperty("user.home") + "/dfs/";
 	String cache_path = directory_path + "cache/";
 	String log_path = directory_path + "log/";
