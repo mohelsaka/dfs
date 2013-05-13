@@ -6,7 +6,8 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
-import java.rmi.AlreadyBoundException;
+import java.nio.channels.AlreadyBoundException;
+import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -21,6 +22,7 @@ import com.dfs.log.Logger;
 import com.ds.interfaces.ClientInterface;
 import com.ds.interfaces.FileContents;
 import com.ds.interfaces.MessageNotFoundException;
+import com.ds.interfaces.SecondaryServerInterface;
 import com.ds.interfaces.ServerInterface;
 
 
@@ -35,7 +37,26 @@ public class MainServer implements ServerInterface, HeartbeatsResponder{
 	HashSet<String> lockedFiles = new HashSet<String>();
 	Hashtable<Long, Transaction> transactions = new Hashtable<Long, Transaction>(); 
 	
+	private Logger logger;
+	
+	// secondary server attributes
+	String secondaryServerHost;
+	SecondaryServerInterface secondaryServer;
+	
 	public static final String MAIN_SERVER_HEARTBEAT_NAME = "main_server_responder";
+	
+	
+	public MainServer(String secondaryServerHost, String logFilePath) throws RemoteException, NotBoundException {
+		this.secondaryServerHost = secondaryServerHost;
+		
+		// getting access to the secondary server
+		Registry registry = LocateRegistry.getRegistry(secondaryServerHost);
+		secondaryServer = (SecondaryServerInterface)registry.lookup(DFS_SECONDARY_SERVER_UNIQUE_NAME);
+		
+		// create logger
+		logger = new Logger();
+		logger.init(logFilePath);
+	}
 	
 	@Override
 	public FileContents read(String fileName) throws FileNotFoundException,
@@ -56,7 +77,9 @@ public class MainServer implements ServerInterface, HeartbeatsResponder{
 		byte[] content = new byte[contentlength];
 		System.arraycopy(buffer, 0, content, 0, contentlength);
 		
-		Logger.logReadFile(fileName);
+		long time = System.currentTimeMillis();
+		logger.logReadFile(fileName, time);
+		secondaryServer.read(fileName, time);
 		
 		// return FileContent instance
 		return new FileContents(content);
@@ -77,8 +100,12 @@ public class MainServer implements ServerInterface, HeartbeatsResponder{
 		
 		// create transaction object and log it
 		Transaction tx = new Transaction(fileName, Transaction.STARTED, txnId);
-		Logger.logTransaction(tx);
+		long time = System.currentTimeMillis();
+		logger.logTransaction(tx, time);
 		transactions.put(txnId, tx);
+		
+		// replicate log on secondary server
+		secondaryServer.newTxn(fileName, txnId, time);
 		return txnId;
 	}
 
@@ -105,7 +132,10 @@ public class MainServer implements ServerInterface, HeartbeatsResponder{
 		outstream.flush();
 		outstream.close();
 		
-		Logger.logWriteRequest(txnID, msgSeqNum, data.length);
+		long time = System.currentTimeMillis();
+		logger.logWriteRequest(txnID, msgSeqNum, data.length, time);
+		secondaryServer.write(txnID, msgSeqNum, data.length, time);
+		
 		return ACK;
 	}
 
@@ -174,7 +204,9 @@ public class MainServer implements ServerInterface, HeartbeatsResponder{
 		}
 		
 		clearTransaction(txnID, Transaction.COMMITED);
-		Logger.logTransaction(tx);
+		long time = System.currentTimeMillis();
+		logger.logTransaction(tx, time);
+		secondaryServer.commit(txnID, tx.getFileName(), time);
 		
 		return ACK;
 	}
@@ -255,7 +287,10 @@ public class MainServer implements ServerInterface, HeartbeatsResponder{
 		// clear all changes made by this transaction
 		clearTransaction(txnID, Transaction.ABORTED);
 		
-		Logger.logTransaction(transactions.get(txnID));
+		long time = System.currentTimeMillis();
+		logger.logTransaction(transactions.get(txnID), time);
+		secondaryServer.abort(txnID, transactions.get(txnID).getFileName(), time);
+		
 		return ACK;
 	}
 
@@ -271,6 +306,7 @@ public class MainServer implements ServerInterface, HeartbeatsResponder{
 			
 			// add this new client to the list of authenticated clients
 			this.clients.put(auth_token, client);
+			secondaryServer.registerClient(client, auth_token);
 			return true;
 		}else{
 			if(clients.containsKey(auth_token))
@@ -292,6 +328,7 @@ public class MainServer implements ServerInterface, HeartbeatsResponder{
 			if(clients.containsKey(auth_token)){
 				// safely remove this client
 				clients.remove(auth_token);
+				secondaryServer.unregisterClient(client, auth_token);
 				return true;
 			}
 			else{
@@ -305,9 +342,9 @@ public class MainServer implements ServerInterface, HeartbeatsResponder{
 	public boolean isAlive() throws RemoteException {
 		return true;
 	}
-
-	public static void main(String[] args) throws RemoteException, AlreadyBoundException {
-		MainServer server = new MainServer();
+	
+	public static void main(String[] args) throws RemoteException, AlreadyBoundException, NotBoundException, java.rmi.AlreadyBoundException {
+		MainServer server = new MainServer(args[1], args[2]);
 		ServerInterface serverStub = (ServerInterface) UnicastRemoteObject.exportObject(server, 0);
 		HeartbeatsResponder heartbeatResponderStub = (HeartbeatsResponder) UnicastRemoteObject.exportObject(server, 0);
 		
