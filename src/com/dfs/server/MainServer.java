@@ -13,7 +13,6 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.UUID;
 
@@ -52,6 +51,21 @@ public class MainServer implements ServerInterface, HeartbeatsResponder{
 	
 	public static final String MAIN_SERVER_HEARTBEAT_NAME = "main_server_responder";
 	
+	/**
+	 * Constructing MainServe object with main attributes, this is used when running new MainServer
+	 * instance from the secondary server when the original main server is failed.
+	 * */
+	public MainServer(Logger logger, Hashtable<String, ClientInterface> clients,
+					  Hashtable<Long, Transaction> transactions, String directoryPath){
+		
+		this.logger = logger;
+		this.directory_path = directoryPath;
+		this.clients = clients;
+		this.transactions = transactions;
+		
+		// creating working directories
+		new File(cache_path).mkdir();
+	}
 	
 	public MainServer(String secondaryServerHost, String directoryPath) throws RemoteException, NotBoundException {
 		if(directoryPath != null)
@@ -62,6 +76,10 @@ public class MainServer implements ServerInterface, HeartbeatsResponder{
 			Registry registry = LocateRegistry.getRegistry(secondaryServerHost);
 			secondaryServer = (SecondaryServerInterface)registry.lookup(DFS_SECONDARY_SERVER_UNIQUE_NAME);
 		}
+		
+		// creating working directories
+		new File(cache_path).mkdir();
+		new File(log_path).mkdir();
 		
 		// create logger
 		logger = new Logger();
@@ -354,14 +372,18 @@ public class MainServer implements ServerInterface, HeartbeatsResponder{
 		return true;
 	}
 	
-	public static void main(String[] args) throws RemoteException, AlreadyBoundException, NotBoundException, java.rmi.AlreadyBoundException {
-		MainServer server = new MainServer(args[1], args[2]);
-		ServerInterface serverStub = (ServerInterface) UnicastRemoteObject.exportObject(server, 0);
-		HeartbeatsResponder heartbeatResponderStub = (HeartbeatsResponder) UnicastRemoteObject.exportObject(server, 0);
+	public void init(int port) throws RemoteException, java.rmi.AlreadyBoundException{
+		ServerInterface serverStub = (ServerInterface) UnicastRemoteObject.exportObject(this, port);
+		HeartbeatsResponder heartbeatResponderStub = (HeartbeatsResponder) UnicastRemoteObject.exportObject(this, port);
 		
 		Registry registry = LocateRegistry.getRegistry();
 		registry.bind(DFSERVER_UNIQUE_NAME, serverStub);
 		registry.bind(MAIN_SERVER_HEARTBEAT_NAME, heartbeatResponderStub);
+	}
+	
+	public static void main(String[] args) throws RemoteException, AlreadyBoundException, NotBoundException, java.rmi.AlreadyBoundException {
+		MainServer server = new MainServer(args[1], args[2]);
+		server.init(Integer.parseInt(args[3]));
 		
 		System.out.println("server is running ...");
 	}
