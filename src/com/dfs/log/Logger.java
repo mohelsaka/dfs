@@ -104,6 +104,12 @@ public class Logger {
 		init(logFilePath);
 	}
 	
+	public LogIterator readLog() throws FileNotFoundException{
+		InputStreamReader converter = new InputStreamReader(new FileInputStream(new File(logFilePath)));
+		BufferedReader in = new BufferedReader(converter);
+		return new LogIterator(in);
+	}
+	
 	class LogEntry{
 		String type;
 		long timeStamp;
@@ -142,4 +148,52 @@ public class Logger {
 		}
 	}
 
+	class LogIterator implements Iterator<LogEntry>{
+		BufferedReader in;
+		String line = "";
+		
+		boolean nextElementHasbeenRead = false;
+		public LogIterator(BufferedReader in) {
+			this.in = in;
+		}
+		
+		@Override
+		public boolean hasNext() {
+			if(nextElementHasbeenRead)
+				return line == null;
+
+			try {
+				line = in.readLine();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			
+			nextElementHasbeenRead = true;
+			return line == null;
+		}
+
+		@Override
+		public LogEntry next() {
+			if(!nextElementHasbeenRead){
+				try {
+					line = in.readLine();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+			
+			nextElementHasbeenRead = false;
+			
+			if(line == null)
+				return null;
+			else
+				return new LogEntry(line);
+		}
+
+		@Override
+		public void remove() {
+			throw new UnsupportedOperationException();
+		}
+		
+	}
 }
