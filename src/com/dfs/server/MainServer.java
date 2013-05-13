@@ -27,15 +27,24 @@ import com.ds.interfaces.ServerInterface;
 
 
 public class MainServer implements ServerInterface, HeartbeatsResponder{
-	Hashtable<String, ClientInterface> clients = new Hashtable<String, ClientInterface>();
-	
 	// default directories
 	String directory_path = System.getProperty("user.home") + "/dfs/";
 	String cache_path = directory_path + "cache/";
 	String log_path = directory_path + "log/";
+
+	/**
+	 * Hashtable of all transaction
+	 * */
+	Hashtable<Long, Transaction> transactions = new Hashtable<Long, Transaction>();
 	
-	Hashtable<Long, Transaction> transactions = new Hashtable<Long, Transaction>(); 
+	/**
+	 * Hashtable of all clients
+	 * */
+	Hashtable<String, ClientInterface> clients = new Hashtable<String, ClientInterface>();
 	
+	/**
+	 * Logger instance to log clients interaction with the server
+	 * */
 	private Logger logger;
 	
 	// secondary server attributes
