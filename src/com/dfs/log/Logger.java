@@ -1,9 +1,15 @@
 package com.dfs.log;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.Iterator;
+import java.util.StringTokenizer;
 
 import com.dfs.server.Transaction;
 
@@ -12,15 +18,16 @@ public class Logger {
 	public static final String READ_LOG_ENTRY = "READ";
 	public static final String WRITE_LOG_ENTRY = "WMSG";
 	
-	private static final String LOG_FILE_PATH = "log";
-	protected static BufferedWriter log;
+	protected String logFilePath;
+	protected BufferedWriter log;
 	
 	/**
 	 * Initilaizes the logger and opening stream on log file or create it
 	 * */
-	public static void init(){
+	public void init(String logFilePath){
+		this.logFilePath = logFilePath;
 		try {
-			File logFIle = new File(LOG_FILE_PATH);
+			File logFIle = new File(logFilePath);
 			logFIle.createNewFile();
 			log = new BufferedWriter(new FileWriter(logFIle, true));
 		} catch (IOException e) {
@@ -37,9 +44,9 @@ public class Logger {
 	 * 
 	 * @param	tx	transaction to be logged
 	 * */
-	public static void logTransaction(Transaction tx){
+	public String logTransaction(Transaction tx, long time){
 		String msg = String.format("%d:%d:%s", tx.getId(), tx.getState(), tx.getFileName());
-		writeLogEntry(TRANSACTION_LOG_ENTRY, msg);
+		return writeLogEntry(TRANSACTION_LOG_ENTRY, msg, time);
 	}
 	
 	/**
@@ -47,8 +54,8 @@ public class Logger {
 	 * 
 	 * @param fileName	name of the file that is being read 
 	 * */
-	public static void logReadFile(String fileName){
-		writeLogEntry(READ_LOG_ENTRY, fileName);
+	public String logReadFile(String fileName, long time){
+		return writeLogEntry(READ_LOG_ENTRY, fileName, time);
 	}
 	
 	
@@ -59,24 +66,42 @@ public class Logger {
 	 * @param	msgid	id of the message that has been writen
 	 * @param	msgSize	size of the message that has been writen
 	 * */
-	public static void logWriteRequest(long txnid, long msgid, long msgSize){
+	public String logWriteRequest(long txnid, long msgid, long msgSize, long time){
 		String msg = String.format("%d:%d:%d", txnid, msgid, msgSize);
-		writeLogEntry(WRITE_LOG_ENTRY, msg);
+		return writeLogEntry(WRITE_LOG_ENTRY, msg, time);
 	}
 
-	protected static void writeLogEntry(String entryType, String msg){
+	protected String writeLogEntry(String entryType, String msg, long time){
 		try {
-			log.write(String.format("%s:%d", entryType, System.currentTimeMillis()));
-			log.write('\t');
-			log.write(msg);
-			log.append('\n');
+			StringBuilder stb = new StringBuilder();
+			stb.append(String.format("%s:%d", entryType, time));
+			stb.append('\t');
+			stb.append(msg);
+			stb.append('\n');
 			
+			log.write(stb.toString());
 			log.flush();
+			
+			return stb.toString();
 		} catch (IOException e) {
 			e.printStackTrace();
 
 			// system can not live without logging
 			System.exit(1);
 		}
+		return null;
 	}
+	
+	public void closeWriterStream(){
+		try {
+			log.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public void reInit(){
+		init(logFilePath);
+	}
+	
 }
