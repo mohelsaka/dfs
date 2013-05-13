@@ -34,7 +34,6 @@ public class MainServer implements ServerInterface, HeartbeatsResponder{
 	String cache_path = directory_path + "cache/";
 	String log_path = directory_path + "log/";
 	
-	HashSet<String> lockedFiles = new HashSet<String>();
 	Hashtable<Long, Transaction> transactions = new Hashtable<Long, Transaction>(); 
 	
 	private Logger logger;
@@ -64,11 +63,6 @@ public class MainServer implements ServerInterface, HeartbeatsResponder{
 	public FileContents read(String fileName) throws FileNotFoundException,
 			IOException, RemoteException {
 		
-		// check if the file is currently being locked by other transaction
-		if(lockedFiles.contains(fileName)){
-			throw new IOException("File is locked");
-		}
-		
 		// Note: only file of size less that BUFFER_SIZE can be handled correctly.
 		FileInputStream instream = new FileInputStream(new File(directory_path + fileName));
 		byte[] buffer = new byte[FileContents.BUFFER_SIZE];
@@ -91,16 +85,8 @@ public class MainServer implements ServerInterface, HeartbeatsResponder{
 
 	@Override
 	public long newTxn(String fileName) throws RemoteException, IOException {
-		// check if the file is currently being locked by other transaction
-		if(lockedFiles.contains(fileName)){
-			throw new IOException("File is locked");
-		}
-		
 		// generate new transaction id
 		long txnId = System.currentTimeMillis();
-		
-		// add lock on the file
-		lockedFiles.add(fileName);
 		
 		// create transaction object and log it
 		Transaction tx = new Transaction(fileName, Transaction.STARTED, txnId);
@@ -229,7 +215,6 @@ public class MainServer implements ServerInterface, HeartbeatsResponder{
 			file.delete();
 		}
 		Transaction tx = transactions.get(txnID);
-		lockedFiles.remove(tx.getFileName());
 		tx.setState(txnNewState);
 	}
 	
