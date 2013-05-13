@@ -40,22 +40,24 @@ public class MainServer implements ServerInterface, HeartbeatsResponder{
 	private Logger logger;
 	
 	// secondary server attributes
-	String secondaryServerHost;
 	SecondaryServerInterface secondaryServer;
 	
 	public static final String MAIN_SERVER_HEARTBEAT_NAME = "main_server_responder";
 	
 	
-	public MainServer(String secondaryServerHost, String logFilePath) throws RemoteException, NotBoundException {
-		this.secondaryServerHost = secondaryServerHost;
+	public MainServer(String secondaryServerHost, String directoryPath) throws RemoteException, NotBoundException {
+		if(directoryPath != null)
+			this.directory_path = directoryPath;
 		
-		// getting access to the secondary server
-		Registry registry = LocateRegistry.getRegistry(secondaryServerHost);
-		secondaryServer = (SecondaryServerInterface)registry.lookup(DFS_SECONDARY_SERVER_UNIQUE_NAME);
+		// getting access to the secondary server if it is given as paramter
+		if(secondaryServerHost != null){
+			Registry registry = LocateRegistry.getRegistry(secondaryServerHost);
+			secondaryServer = (SecondaryServerInterface)registry.lookup(DFS_SECONDARY_SERVER_UNIQUE_NAME);
+		}
 		
 		// create logger
 		logger = new Logger();
-		logger.init(logFilePath);
+		logger.init(log_path);
 	}
 	
 	@Override
@@ -79,7 +81,9 @@ public class MainServer implements ServerInterface, HeartbeatsResponder{
 		
 		long time = System.currentTimeMillis();
 		logger.logReadFile(fileName, time);
-		secondaryServer.read(fileName, time);
+		
+		if(secondaryServer != null)
+			secondaryServer.read(fileName, time);
 		
 		// return FileContent instance
 		return new FileContents(content);
@@ -104,8 +108,9 @@ public class MainServer implements ServerInterface, HeartbeatsResponder{
 		logger.logTransaction(tx, time);
 		transactions.put(txnId, tx);
 		
-		// replicate log on secondary server
-		secondaryServer.newTxn(fileName, txnId, time);
+		if(secondaryServer != null)
+			secondaryServer.newTxn(fileName, txnId, time);
+		
 		return txnId;
 	}
 
@@ -134,7 +139,9 @@ public class MainServer implements ServerInterface, HeartbeatsResponder{
 		
 		long time = System.currentTimeMillis();
 		logger.logWriteRequest(txnID, msgSeqNum, data.length, time);
-		secondaryServer.write(txnID, msgSeqNum, data.length, time);
+		
+		if(secondaryServer != null)
+			secondaryServer.write(txnID, msgSeqNum, data.length, time);
 		
 		return ACK;
 	}
@@ -206,7 +213,9 @@ public class MainServer implements ServerInterface, HeartbeatsResponder{
 		clearTransaction(txnID, Transaction.COMMITED);
 		long time = System.currentTimeMillis();
 		logger.logTransaction(tx, time);
-		secondaryServer.commit(txnID, tx.getFileName(), time);
+		
+		if(secondaryServer != null)
+			secondaryServer.commit(txnID, tx.getFileName(), time);
 		
 		return ACK;
 	}
@@ -289,7 +298,9 @@ public class MainServer implements ServerInterface, HeartbeatsResponder{
 		
 		long time = System.currentTimeMillis();
 		logger.logTransaction(transactions.get(txnID), time);
-		secondaryServer.abort(txnID, transactions.get(txnID).getFileName(), time);
+		
+		if(secondaryServer != null)
+			secondaryServer.abort(txnID, transactions.get(txnID).getFileName(), time);
 		
 		return ACK;
 	}
@@ -306,7 +317,10 @@ public class MainServer implements ServerInterface, HeartbeatsResponder{
 			
 			// add this new client to the list of authenticated clients
 			this.clients.put(auth_token, client);
-			secondaryServer.registerClient(client, auth_token);
+			
+			if(secondaryServer != null)
+				secondaryServer.registerClient(client, auth_token);
+			
 			return true;
 		}else{
 			if(clients.containsKey(auth_token))
@@ -328,7 +342,10 @@ public class MainServer implements ServerInterface, HeartbeatsResponder{
 			if(clients.containsKey(auth_token)){
 				// safely remove this client
 				clients.remove(auth_token);
-				secondaryServer.unregisterClient(client, auth_token);
+				
+				if(secondaryServer != null)
+					secondaryServer.unregisterClient(client, auth_token);
+				
 				return true;
 			}
 			else{
