@@ -104,4 +104,42 @@ public class Logger {
 		init(logFilePath);
 	}
 	
+	class LogEntry{
+		String type;
+		long timeStamp;
+		String fileName;
+		long transactionID;
+		long transactionState;
+		long messageID;
+		long messageSize;
+		
+		public LogEntry(String line){
+			String type_and_timeStamp = line.substring(0, line.indexOf('\t'));
+			String entryDate = line.substring(line.indexOf('\t') + 1);
+			
+			StringTokenizer st = new StringTokenizer(type_and_timeStamp, ":");
+			this.type = st.nextToken();
+			this.timeStamp = Long.parseLong(st.nextToken());
+			
+			if(type.equals(READ_LOG_ENTRY)){
+				
+				this.fileName = entryDate;
+
+			}else if(type.equals(TRANSACTION_LOG_ENTRY)){
+			
+				st = new StringTokenizer(entryDate, ":");
+				this.transactionID = Long.parseLong(st.nextToken());
+				this.transactionState = Long.parseLong(st.nextToken());
+				this.fileName = entryDate.substring(entryDate.lastIndexOf(':') + 1);
+			
+			}else if(type.equals(WRITE_LOG_ENTRY)){
+				
+				st = new StringTokenizer(entryDate, ":");
+				this.transactionID = Long.parseLong(st.nextToken());
+				this.messageID = Long.parseLong(st.nextToken());
+				this.messageSize = Long.parseLong(st.nextToken());
+			}
+		}
+	}
+
 }
