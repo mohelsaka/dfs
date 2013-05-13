@@ -1,9 +1,9 @@
 package com.dfs.server;
 
 public class Transaction {
-	static final int COMMITED = 10;
-	static final int STARTED = 20;
-	static final int ABORTED = 30;
+	public static final int COMMITED = 10;
+	public static final int STARTED = 20;
+	public static final int ABORTED = 30;
 	
 	private String fileName;
 	private int state;
