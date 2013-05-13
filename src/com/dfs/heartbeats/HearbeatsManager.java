@@ -26,7 +26,7 @@ public class HearbeatsManager extends Thread{
 	 * */
 	boolean deattachOnFailure = true;
 	
-	HearbeatsManager(HeartbeatsListener listener, long period){
+	public HearbeatsManager(HeartbeatsListener listener, long period){
 		this.listener = listener;
 		this.period = period;
 
