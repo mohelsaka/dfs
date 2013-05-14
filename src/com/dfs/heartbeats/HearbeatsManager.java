@@ -61,7 +61,7 @@ public class HearbeatsManager extends Thread{
 				try {
 					alive = responder.isAlive();
 				} catch (RemoteException e) {
-					e.printStackTrace();
+//					e.printStackTrace();
 				}
 				
 				if (!alive) {
