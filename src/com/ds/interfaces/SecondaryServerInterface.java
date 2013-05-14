@@ -1,8 +1,9 @@
 package com.ds.interfaces;
 
+import java.rmi.Remote;
 import java.rmi.RemoteException;
 
-public interface SecondaryServerInterface {
+public interface SecondaryServerInterface extends Remote{
 	public void read(String fileName, long time) throws RemoteException;
 
 	public void newTxn(String fileName, long txnId, long time) throws RemoteException;
