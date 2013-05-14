@@ -6,6 +6,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.net.UnknownHostException;
 import java.nio.channels.AlreadyBoundException;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
@@ -68,8 +69,11 @@ public class MainServer implements ServerInterface, HeartbeatsResponder{
 	}
 	
 	public MainServer(String secondaryServerHost, String directoryPath) throws RemoteException, NotBoundException {
-		if(directoryPath != null)
+		if(directoryPath != null){
 			this.directory_path = directoryPath;
+			this.cache_path = directory_path + "cache/";
+			this.log_path = directory_path + "log/";			
+		}
 		
 		// getting access to the secondary server if it is given as paramter
 		if(secondaryServerHost != null){
@@ -83,7 +87,7 @@ public class MainServer implements ServerInterface, HeartbeatsResponder{
 		
 		// create logger
 		logger = new Logger();
-		logger.init(log_path);
+		logger.init(log_path + "log.txt");
 	}
 	
 	@Override
@@ -142,8 +146,9 @@ public class MainServer implements ServerInterface, HeartbeatsResponder{
 		}
 		
 		// build cache file name
-		String fileName = cache_path + txnID + "_" + msgSeqNum;
-		FileOutputStream outstream = new FileOutputStream(new File(fileName));
+		File cacheFile = new File(cache_path + txnID + "_" + msgSeqNum);
+		cacheFile.createNewFile();
+		FileOutputStream outstream = new FileOutputStream(cacheFile);
 		
 		// safely write data and close opened stream
 		outstream.write(data);
@@ -198,17 +203,17 @@ public class MainServer implements ServerInterface, HeartbeatsResponder{
 		Transaction tx = transactions.get(txnID);
 		try {
 			// create new file if it is not exist yet.
-			File fout = new File(tx.getFileName());
+			File fout = new File(directory_path + tx.getFileName());
 			fout.createNewFile();
 			
 			FileOutputStream outsream = new FileOutputStream(fout, true);
 			
 			byte [] buffer = new byte[FileContents.BUFFER_SIZE];
 			for (int i = 1; i <= numOfMsgs; i++) {
-				FileInputStream instream = new FileInputStream(new File("" + txnID + '_' + i));
+				FileInputStream instream = new FileInputStream(new File(cache_path + txnID + '_' + i));
 				
 				int len = 0;
-				while((len = instream.read(buffer)) != 0){
+				while((len = instream.read(buffer)) != -1){
 					outsream.write(buffer, 0, len);
 				}
 				
@@ -373,17 +378,18 @@ public class MainServer implements ServerInterface, HeartbeatsResponder{
 	}
 	
 	public void init(int port) throws RemoteException, java.rmi.AlreadyBoundException{
-		ServerInterface serverStub = (ServerInterface) UnicastRemoteObject.exportObject(this, port);
-		HeartbeatsResponder heartbeatResponderStub = (HeartbeatsResponder) UnicastRemoteObject.exportObject(this, port);
+		Object mainServerExportedObject = UnicastRemoteObject.exportObject(this, port);
+		ServerInterface serverStub = (ServerInterface) mainServerExportedObject;
+		HeartbeatsResponder heartbeatResponderStub = (HeartbeatsResponder) mainServerExportedObject;
 		
-		Registry registry = LocateRegistry.getRegistry();
+		Registry registry = LocateRegistry.createRegistry(port);
 		registry.bind(DFSERVER_UNIQUE_NAME, serverStub);
 		registry.bind(MAIN_SERVER_HEARTBEAT_NAME, heartbeatResponderStub);
 	}
 	
 	public static void main(String[] args) throws RemoteException, AlreadyBoundException, NotBoundException, java.rmi.AlreadyBoundException {
-		MainServer server = new MainServer(args[1], args[2]);
-		server.init(Integer.parseInt(args[3]));
+		MainServer server = new MainServer("localhost", System.getProperty("user.home")+"/dfs/dfs2/");
+		server.init(5555);
 		
 		System.out.println("server is running ...");
 	}

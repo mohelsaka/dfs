@@ -13,7 +13,7 @@ public class Test {
 	public static void main(String[] args) throws NotBoundException, FileNotFoundException, IOException {
 		Registry registry = LocateRegistry.getRegistry();
 		
-		ServerInterface server = (ServerInterface) registry.lookup(ServerInterface.DFServerUniqyeName);
+		ServerInterface server = (ServerInterface) registry.lookup(ServerInterface.DFSERVER_UNIQUE_NAME);
 		
 		System.out.println(server);
 	}
