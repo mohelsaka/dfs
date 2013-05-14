@@ -27,9 +27,9 @@ public class Logger {
 	public void init(String logFilePath){
 		this.logFilePath = logFilePath;
 		try {
-			File logFIle = new File(logFilePath);
-			logFIle.createNewFile();
-			log = new BufferedWriter(new FileWriter(logFIle, true));
+			File logFile = new File(logFilePath);
+			logFile.createNewFile();
+			log = new BufferedWriter(new FileWriter(logFile, true));
 		} catch (IOException e) {
 			System.err.println("unable to open log file");
 			e.printStackTrace();
