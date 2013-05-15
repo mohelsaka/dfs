@@ -200,16 +200,20 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 			// the client me request resending the ack message
 			return ACK;
 		}
+		
 		for (String name : replicaservers) {
 			ServerInterface server = (ServerInterface) getServer(name);
 			if (server != null)
 				server.commit(txnID, numOfMsgs);
 		}
+		
 		Transaction tx = transactions.get(txnID);
 		long time = System.currentTimeMillis();
 		logger.logTransaction(tx, time);
+		
 		if (secondaryServer != null)
 			secondaryServer.commit(txnID, tx.getFileName(), time);
+		
 		Object[] keys = transIdleTimes.keySet().toArray();
 		for (Object key : keys) {
 			long lkey = (Long)key;
@@ -218,6 +222,7 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 				transIdleTimes.remove(lkey);
 			}
 		}
+		
 		return ACK;
 	}
 
