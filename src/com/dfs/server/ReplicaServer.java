@@ -32,7 +32,7 @@ public class ReplicaServer implements ServerInterface, HeartbeatsResponder {
 	 * */
 	Hashtable<Long, Transaction> transactions = new Hashtable<Long, Transaction>();
 
-long lasttxn;
+	long lasttxn = 10000;
 
 	
 
@@ -43,6 +43,7 @@ long lasttxn;
 			this.cache_path = directory_path + "cache/";
 			this.log_path = directory_path + "log/";
 		}
+		
 		// creating working directories
 		new File(directory_path).mkdir();
 		new File(cache_path).mkdir();
@@ -55,8 +56,7 @@ long lasttxn;
 
 		// Note: only file of size less that BUFFER_SIZE can be handled
 		// correctly.
-		FileInputStream instream = new FileInputStream(new File(directory_path
-				+ fileName));
+		FileInputStream instream = new FileInputStream(new File(directory_path + fileName));
 		byte[] buffer = new byte[FileContents.BUFFER_SIZE];
 		int contentlength = instream.read(buffer);
 		instream.close();
@@ -64,7 +64,6 @@ long lasttxn;
 		// copying the buffer in smaller content byte array to be sent
 		byte[] content = new byte[contentlength];
 		System.arraycopy(buffer, 0, content, 0, contentlength);
-
 
 		// return FileContent instance
 		return new FileContents(content);
@@ -78,7 +77,6 @@ long lasttxn;
 		// create transaction object and log it
 		Transaction tx = new Transaction(fileName, Transaction.STARTED, txnId);
 		transactions.put(txnId, tx);
-
 
 		return txnId;
 	}
@@ -127,8 +125,7 @@ long lasttxn;
 		}
 
 		// get all cached files by this transaction
-		File[] cachedFiles = new File(cache_path)
-				.listFiles(new CacheFilesFilter(txnID));
+		File[] cachedFiles = new File(cache_path).listFiles(new CacheFilesFilter(txnID));
 
 		// check if there are unreceived messages and report them to the client
 		if (cachedFiles.length < numOfMsgs) {

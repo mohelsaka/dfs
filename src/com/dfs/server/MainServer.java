@@ -82,15 +82,15 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 			this.cache_path = directory_path + "cache/";
 			this.log_path = directory_path + "log/";
 		}
+		
 		this.clients = new Hashtable<String, ClientInterface>();
-		replicaservers = new ArrayList<String>();
+		this.replicaservers = new ArrayList<String>();
 		this.random = new Random(System.currentTimeMillis());
 		
 		// getting access to the secondary server if it is given as paramter
 		if (secondaryServerHost != null) {
 			Registry registry = LocateRegistry.getRegistry(secondaryServerHost);
-			secondaryServer = (SecondaryServerInterface) registry
-					.lookup(DFS_SECONDARY_SERVER_UNIQUE_NAME);
+			secondaryServer = (SecondaryServerInterface) registry.lookup(DFS_SECONDARY_SERVER_UNIQUE_NAME);
 		}
 
 		// creating working directories
@@ -98,9 +98,9 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 		new File(log_path).mkdir();
 
 		// create logger
-		logger = new Logger();
-		logger.init(log_path + "log.txt");
-		transIdleTimes = new Hashtable<Long, Long>();
+		this.logger = new Logger();
+		this.logger.init(log_path + "log.txt");
+		this.transIdleTimes = new Hashtable<Long, Long>();
 	}
 
 	ServerInterface getServer(String name) {
@@ -109,10 +109,8 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 			registry = LocateRegistry.getRegistry();
 			return (ServerInterface) registry.lookup(name);
 		} catch (RemoteException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (NotBoundException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		return null;
@@ -121,10 +119,12 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 	@Override
 	public FileContents read(String fileName) throws FileNotFoundException,
 			IOException, RemoteException {
+		
 		int idx = random.nextInt(replicaservers.size());
-		ServerInterface rServer = (ServerInterface) getServer(replicaservers
-				.get(idx));
+		
+		ServerInterface rServer = (ServerInterface) getServer(replicaservers.get(idx));
 		FileContents contents = rServer.read(fileName);
+		
 		long time = System.currentTimeMillis();
 		logger.logReadFile(fileName, time);
 
@@ -140,19 +140,24 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 	public long newTxn(String fileName) throws RemoteException, IOException {
 		// generate new transaction id
 		long txnId = lasttxn++;
+		
 		// create transaction object and log it
 		Transaction tx = new Transaction(fileName, Transaction.STARTED, txnId);
 		
 		long time = System.currentTimeMillis();
 		logger.logTransaction(tx, time);
 		transactions.put(txnId, tx);
+		
 		for (String name : replicaservers) {
 			ServerInterface server = (ServerInterface) getServer(name);
+			
 			if (server != null)
 				server.newTxn(fileName);
 		}
+		
 		if (secondaryServer != null)
 			secondaryServer.newTxn(fileName, txnId, time);
+		
 		return txnId;
 	}
 
@@ -168,8 +173,10 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 		if (transactions.get(txnID).getState() == Transaction.COMMITED) {
 			return INVALID_OPERATION;
 		}
+		
 		for (String name : replicaservers) {
 			ServerInterface server = (ServerInterface) getServer(name);
+			
 			if (server != null)
 				server.write(txnID, msgSeqNum, data);
 		}
@@ -258,8 +265,7 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 		logger.logTransaction(transactions.get(txnID), time);
 
 		if (secondaryServer != null)
-			secondaryServer.abort(txnID, transactions.get(txnID).getFileName(),
-					time);
+			secondaryServer.abort(txnID, transactions.get(txnID).getFileName(), time);
 
 		return ACK;
 	}
@@ -320,8 +326,7 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 
 	public void init(int port) throws RemoteException,
 			java.rmi.AlreadyBoundException {
-		Object mainServerExportedObject = UnicastRemoteObject.exportObject(
-				this, port);
+		Object mainServerExportedObject = UnicastRemoteObject.exportObject(this, port);
 		ServerInterface serverStub = (ServerInterface) mainServerExportedObject;
 		HeartbeatsResponder heartbeatResponderStub = (HeartbeatsResponder) mainServerExportedObject;
 
@@ -333,13 +338,16 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 	public static void main(String[] args) throws RemoteException,
 			AlreadyBoundException, NotBoundException,
 			java.rmi.AlreadyBoundException {
-		MainServer server = new MainServer("localhost",
-				System.getProperty("user.home") + "/dfs/dfs2/");
+		
+		MainServer server = new MainServer("localhost",	System.getProperty("user.home") + "/dfs/dfs2/");
 		server.init(5555);
+		
 		new ReplicaServer("localhost", "1").init("replica1", 5678);
 		new ReplicaServer("localhost", "2").init("replica2", 5679);
+		
 		server.replicaservers.add("replica1");
 		server.replicaservers.add("replica2");
+		
 		System.out.println("server is running ...");
 	}
 
