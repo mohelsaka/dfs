@@ -6,7 +6,6 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.rmi.AlreadyBoundException;
-import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -119,7 +118,7 @@ public class SecondaryServer implements HeartbeatsListener, SecondaryServerInter
 	@Override
 	public void newTxn(String fileName, long txnId, long time)
 			throws RemoteException {
-		Transaction tx = new Transaction(fileName, Transaction.STARTED, txnId);
+		Transaction tx = new Transaction(fileName, Transaction.STARTED, txnId, System.currentTimeMillis());
 		transactions.put(tx.getId(), tx);
 		logger.logTransaction(tx, time);
 	}

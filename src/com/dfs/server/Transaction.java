@@ -8,11 +8,13 @@ public class Transaction {
 	private String fileName;
 	private int state;
 	private long id;
+	private long lastEdited;
 	
-	public Transaction(String fileName, int state, long id) {
+	public Transaction(String fileName, int state, long id, long lastEdited) {
 		this.fileName = fileName;
 		this.state = state;
 		this.id = id;
+		this.lastEdited = lastEdited;
 	}
 	
 	public String toString(){
@@ -36,5 +38,11 @@ public class Transaction {
 	
 	public void setState(int state) {
 		this.state = state;
+	}
+	public void setLastEdited(Long time) {
+		lastEdited = time;
+	}
+	public long getLastEdited() {
+		return lastEdited;
 	}
 }

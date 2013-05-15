@@ -64,11 +64,10 @@ public class Client implements ClientInterface {
 		return new String(content);
 	}
 
-	public long write(String fileName, String content1, String content2)
+	public long write(String fileName, String content)
 			throws RemoteException, IOException, MessageNotFoundException {
 		long txid = server.newTxn(fileName);
-		server.write(txid, 1, content1.getBytes());
-		server.write(txid, 2, content2.getBytes());
+		server.write(txid, 1, content.getBytes());
 		return txid;
 	}
 
@@ -87,7 +86,8 @@ public class Client implements ClientInterface {
 				if (chunks[0].equals("read"))
 					System.out.println(c.read(chunks[1]));
 				else if (chunks[0].equals("write")) {
-					txid = c.write(chunks[1], chunks[2], chunks[3]);
+					// update: write file data then you must commit
+					txid = c.write(chunks[1], command.substring(command.indexOf(' ')));
 					if (txid == ServerInterface.INVALID_OPERATION
 							|| txid == ServerInterface.INVALID_TRANSACTION_ID)
 						System.err.println("error: data couldn't be written");

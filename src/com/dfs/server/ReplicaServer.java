@@ -13,26 +13,19 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.Arrays;
-import java.util.Hashtable;
-
-import com.dfs.heartbeats.HeartbeatsResponder;
 import com.ds.interfaces.ClientInterface;
 import com.ds.interfaces.FileContents;
 import com.ds.interfaces.MessageNotFoundException;
+import com.ds.interfaces.ReplicaServerInterface;
 import com.ds.interfaces.ServerInterface;
 
-public class ReplicaServer implements ServerInterface, HeartbeatsResponder {
+public class ReplicaServer implements ReplicaServerInterface {
 	// default directories
 	String directory_path = System.getProperty("user.home") + "/dfs/";
 	String cache_path = directory_path + "cache/";
 	String log_path = directory_path + "log/";
 
-	/**
-	 * Hashtable of all transaction
-	 * */
-	Hashtable<Long, Transaction> transactions = new Hashtable<Long, Transaction>();
 
-	long lasttxn = 10000;
 
 	
 
@@ -71,30 +64,12 @@ public class ReplicaServer implements ServerInterface, HeartbeatsResponder {
 
 	@Override
 	public long newTxn(String fileName) throws RemoteException, IOException {
-		// generate new transaction id
-		long txnId = lasttxn++;
-
-		// create transaction object and log it
-		Transaction tx = new Transaction(fileName, Transaction.STARTED, txnId);
-		transactions.put(txnId, tx);
-
-		return txnId;
+		return 0;
 	}
 
 	@Override
 	public int write(long txnID, long msgSeqNum, byte[] data)
 			throws RemoteException, IOException {
-
-		// check if the transaction id is correct
-		if (!transactions.containsKey(txnID)) {
-			return INVALID_TRANSACTION_ID;
-		}
-
-		// check if the transaction has been already committed
-		if (transactions.get(txnID).getState() == Transaction.COMMITED) {
-			return INVALID_OPERATION;
-		}
-
 		// build cache file name
 		File cacheFile = new File(cache_path + txnID + "_" + msgSeqNum);
 		cacheFile.createNewFile();
@@ -110,19 +85,8 @@ public class ReplicaServer implements ServerInterface, HeartbeatsResponder {
 	}
 
 	@Override
-	public int commit(final long txnID, long numOfMsgs)
+	public int commit(final long txnID, long numOfMsgs, String filename)
 			throws MessageNotFoundException, RemoteException {
-
-		// check if the transaction id is correct
-		if (!transactions.containsKey(txnID)) {
-			return INVALID_TRANSACTION_ID;
-		}
-
-		// check if the transaction has been already committed
-		if (transactions.get(txnID).getState() == Transaction.COMMITED) {
-			// the client me request resending the ack message
-			return ACK;
-		}
 
 		// get all cached files by this transaction
 		File[] cachedFiles = new File(cache_path).listFiles(new CacheFilesFilter(txnID));
@@ -145,11 +109,9 @@ public class ReplicaServer implements ServerInterface, HeartbeatsResponder {
 			throw exception;
 		}
 
-		// append cached data to the file
-		Transaction tx = transactions.get(txnID);
 		try {
 			// create new file if it is not exist yet.
-			File fout = new File(directory_path + tx.getFileName());
+			File fout = new File(directory_path + filename);
 			fout.createNewFile();
 
 			FileOutputStream outsream = new FileOutputStream(fout, true);
@@ -191,8 +153,6 @@ public class ReplicaServer implements ServerInterface, HeartbeatsResponder {
 		for (File file : cachedFiles) {
 			file.delete();
 		}
-		Transaction tx = transactions.get(txnID);
-		tx.setState(txnNewState);
 	}
 
 	/**
@@ -240,22 +200,6 @@ public class ReplicaServer implements ServerInterface, HeartbeatsResponder {
 
 	@Override
 	public int abort(long txnID) throws RemoteException {
-		// check if the transaction id is correct
-		if (!transactions.containsKey(txnID)) {
-			return INVALID_TRANSACTION_ID;
-		}
-
-		// check if the transaction has been already committed
-		if (transactions.get(txnID).getState() == Transaction.COMMITED) {
-			// aborting commited transaction is invalid operation
-			return INVALID_OPERATION;
-		}
-
-		// check if the transaction has been already aborted
-		if (transactions.get(txnID).getState() == Transaction.ABORTED) {
-			return ACK;
-		}
-
 		// clear all changes made by this transaction
 		clearTransaction(txnID, Transaction.ABORTED);
 
@@ -276,10 +220,6 @@ public class ReplicaServer implements ServerInterface, HeartbeatsResponder {
 
 	}
 
-	@Override
-	public boolean isAlive() throws RemoteException {
-		return true;
-	}
 
 	public void init(String name, int port) throws RemoteException,
 			java.rmi.AlreadyBoundException {
@@ -294,6 +234,13 @@ public class ReplicaServer implements ServerInterface, HeartbeatsResponder {
 	public static void main(String[] args) throws RemoteException,
 			AlreadyBoundException, NotBoundException,
 			java.rmi.AlreadyBoundException {
+	}
+
+	@Override
+	public int commit(long txnID, long numOfMsgs)
+			throws MessageNotFoundException, RemoteException {
+		// TODO Auto-generated method stub
+		return 0;
 	}
 
 }

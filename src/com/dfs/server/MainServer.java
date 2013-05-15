@@ -6,7 +6,6 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.rmi.AlreadyBoundException;
 import java.rmi.NotBoundException;
-import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -14,7 +13,6 @@ import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.Random;
-import java.util.Set;
 import java.util.UUID;
 
 import com.dfs.heartbeats.HeartbeatsResponder;
@@ -22,6 +20,7 @@ import com.dfs.log.Logger;
 import com.ds.interfaces.ClientInterface;
 import com.ds.interfaces.FileContents;
 import com.ds.interfaces.MessageNotFoundException;
+import com.ds.interfaces.ReplicaServerInterface;
 import com.ds.interfaces.SecondaryServerInterface;
 import com.ds.interfaces.ServerInterface;
 
@@ -31,7 +30,6 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 	String cache_path = directory_path + "cache/";
 	String log_path = directory_path + "log/";
 	ArrayList<String> replicaservers;
-	private long lasttxn = 10000;
 
 	/**
 	 * Hashtable of all transaction
@@ -42,14 +40,13 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 	 * Hashtable of all clients
 	 * */
 	Hashtable<String, ClientInterface> clients = new Hashtable<String, ClientInterface>();
-	Hashtable<Long, Long> transIdleTimes; 
 
 	/**
 	 * Logger instance to log clients interaction with the server
 	 * */
 	private Logger logger;
 	private Random random;
-	private static long idleTimeout = 36000;
+	private static long idleTimeout = 360000; // 1 minute
 
 	// secondary server attributes
 	SecondaryServerInterface secondaryServer;
@@ -72,7 +69,6 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 		this.random = new Random(System.currentTimeMillis());
 		// creating working directories
 		new File(cache_path).mkdir();
-		transIdleTimes = new Hashtable<Long, Long>();
 	}
 
 	public MainServer(String secondaryServerHost, String directoryPath)
@@ -100,7 +96,6 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 		// create logger
 		this.logger = new Logger();
 		this.logger.init(log_path + "log.txt");
-		this.transIdleTimes = new Hashtable<Long, Long>();
 	}
 
 	ServerInterface getServer(String name) {
@@ -139,17 +134,16 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 	@Override
 	public long newTxn(String fileName) throws RemoteException, IOException {
 		// generate new transaction id
-		long txnId = lasttxn++;
-		
-		// create transaction object and log it
-		Transaction tx = new Transaction(fileName, Transaction.STARTED, txnId);
-		
 		long time = System.currentTimeMillis();
+		long txnId = time;
+		// create transaction object and log it
+		Transaction tx = new Transaction(fileName, Transaction.STARTED, txnId, time);
+		
 		logger.logTransaction(tx, time);
 		transactions.put(txnId, tx);
 		
 		for (String name : replicaservers) {
-			ServerInterface server = (ServerInterface) getServer(name);
+			ReplicaServerInterface server = (ReplicaServerInterface) getServer(name);
 			
 			if (server != null)
 				server.newTxn(fileName);
@@ -175,7 +169,7 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 		}
 		
 		for (String name : replicaservers) {
-			ServerInterface server = (ServerInterface) getServer(name);
+			ReplicaServerInterface server = (ReplicaServerInterface) getServer(name);
 			
 			if (server != null)
 				server.write(txnID, msgSeqNum, data);
@@ -184,7 +178,7 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 		logger.logWriteRequest(txnID, msgSeqNum, data.length, time);
 		if (secondaryServer != null)
 			secondaryServer.write(txnID, msgSeqNum, data.length, time);
-		transIdleTimes.put(txnID, time); // the transaction became idle
+		
 		return ACK;
 	}
 
@@ -202,9 +196,9 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 		}
 		
 		for (String name : replicaservers) {
-			ServerInterface server = (ServerInterface) getServer(name);
+			ReplicaServerInterface server = (ReplicaServerInterface) getServer(name);
 			if (server != null)
-				server.commit(txnID, numOfMsgs);
+				server.commit(txnID, numOfMsgs, transactions.get(txnID).getFileName());
 		}
 		
 		Transaction tx = transactions.get(txnID);
@@ -214,14 +208,7 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 		if (secondaryServer != null)
 			secondaryServer.commit(txnID, tx.getFileName(), time);
 		
-		Object[] keys = transIdleTimes.keySet().toArray();
-		for (Object key : keys) {
-			long lkey = (Long)key;
-			if(time - transIdleTimes.get(key) > idleTimeout){
-				abort(lkey);
-				transIdleTimes.remove(lkey);
-			}
-		}
+		
 		
 		return ACK;
 	}
@@ -261,7 +248,7 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 		}
 
 		for (String name : replicaservers) {
-			ServerInterface server = (ServerInterface) getServer(name);
+			ReplicaServerInterface server = (ReplicaServerInterface) getServer(name);
 			if (server != null)
 				server.abort(txnID);
 		}
@@ -344,7 +331,7 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 			AlreadyBoundException, NotBoundException,
 			java.rmi.AlreadyBoundException {
 		
-		MainServer server = new MainServer("localhost",	System.getProperty("user.home") + "/dfs/dfs2/");
+		final MainServer server = new MainServer("localhost",	System.getProperty("user.home") + "/dfs/dfs2/");
 		server.init(5555);
 		
 		new ReplicaServer("localhost", "1").init("replica1", 5678);
@@ -354,6 +341,36 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 		server.replicaservers.add("replica2");
 		
 		System.out.println("server is running ...");
+		
+		new Thread(new Runnable() {
+			
+			@Override
+			public void run() {
+				// TODO Auto-generated method stub
+				while(true){
+					long now = System.currentTimeMillis();
+					Object[] keys = server.transactions.keySet().toArray();
+					for (Object key : keys) {
+						Transaction t = server.transactions.get((Long)key);
+						if(now - t.getLastEdited() > idleTimeout){
+							try {
+								server.abort((Long)key);
+							} catch (RemoteException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+							server.transactions.remove(key);
+						}
+					}
+					try {
+						Thread.sleep(5000);
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
+			}
+		}).start();
 	}
 
 }
