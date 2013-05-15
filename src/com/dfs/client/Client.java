@@ -22,7 +22,7 @@ public class Client implements ClientInterface{
 		this.hostIP = serverHostIP;
 		this.port = port;
 		
-		Registry reg = LocateRegistry.getRegistry(hostIP, port);
+		Registry reg = LocateRegistry.getRegistry();
 		server = (ServerInterface)reg.lookup(ServerInterface.DFSERVER_UNIQUE_NAME);
 		
 		UnicastRemoteObject.exportObject(this, 5412);
