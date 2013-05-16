@@ -2,7 +2,6 @@ package com.dfs.server;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.rmi.AlreadyBoundException;
 import java.rmi.NotBoundException;
@@ -28,17 +27,17 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 	// default directories
 	String directory_path = System.getProperty("user.home") + "/dfs/";
 	String log_path = directory_path + "log/";
-	ArrayList<String> replicaservers;
+	private ArrayList<String> replicaservers;
 
 	/**
 	 * Hashtable of all transaction
 	 * */
-	Hashtable<Long, Transaction> transactions = new Hashtable<Long, Transaction>();
+	private Hashtable<Long, Transaction> transactions = new Hashtable<Long, Transaction>();
 
 	/**
 	 * Hashtable of all clients
 	 * */
-	Hashtable<String, ClientInterface> clients = new Hashtable<String, ClientInterface>();
+	private Hashtable<String, ClientInterface> clients = new Hashtable<String, ClientInterface>();
 
 	/**
 	 * Logger instance to log clients interaction with the server
@@ -125,7 +124,6 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 		return contents;
 	}
 
-
 	@Override
 	public long newTxn(String fileName) throws RemoteException, IOException {
 		// generate new transaction id
@@ -203,25 +201,7 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 		if (secondaryServer != null)
 			secondaryServer.commit(txnID, tx.getFileName(), time);
 		
-		
-		
 		return ACK;
-	}
-
-	/**
-	 * FilenameFilter used to filter cached files for specific transaction
-	 * */
-	class CacheFilesFilter implements FilenameFilter {
-		long txnID = 0;
-
-		public boolean accept(File dir, String name) {
-			name = name.substring(0, name.indexOf('_'));
-			return name.equals("" + txnID);
-		}
-
-		CacheFilesFilter(long txnID) {
-			this.txnID = txnID;
-		}
 	}
 
 	@Override
@@ -320,7 +300,37 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 		Registry registry = LocateRegistry.createRegistry(port);
 		registry.bind(DFSERVER_UNIQUE_NAME, serverStub);
 		registry.bind(MAIN_SERVER_HEARTBEAT_NAME, heartbeatResponderStub);
+		
+		// running transaction time out checker thread
+		transactionsTimeoutChecker.start();
 	}
+	
+	private Thread transactionsTimeoutChecker = new Thread(new Runnable() {
+		
+		@Override
+		public void run() {
+			while(true){
+				long now = System.currentTimeMillis();
+				Object[] keys = MainServer.this.transactions.keySet().toArray();
+				for (Object key : keys) {
+					Transaction t = MainServer.this.transactions.get((Long)key);
+					if(now - t.getLastEdited() > idleTimeout){
+						try {
+							MainServer.this.abort((Long)key);
+						} catch (RemoteException e) {
+							e.printStackTrace();
+						}
+						MainServer.this.transactions.remove(key);
+					}
+				}
+				try {
+					Thread.sleep(5000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+	});
 
 	public static void main(String[] args) throws RemoteException,
 			AlreadyBoundException, NotBoundException,
@@ -336,36 +346,6 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 		server.replicaservers.add("replica2");
 		
 		System.out.println("server is running ...");
-		
-		new Thread(new Runnable() {
-			
-			@Override
-			public void run() {
-				// TODO Auto-generated method stub
-				while(true){
-					long now = System.currentTimeMillis();
-					Object[] keys = server.transactions.keySet().toArray();
-					for (Object key : keys) {
-						Transaction t = server.transactions.get((Long)key);
-						if(now - t.getLastEdited() > idleTimeout){
-							try {
-								server.abort((Long)key);
-							} catch (RemoteException e) {
-								// TODO Auto-generated catch block
-								e.printStackTrace();
-							}
-							server.transactions.remove(key);
-						}
-					}
-					try {
-						Thread.sleep(5000);
-					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-				}
-			}
-		}).start();
 	}
 
 }
