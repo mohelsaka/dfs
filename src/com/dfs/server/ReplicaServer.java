@@ -109,8 +109,7 @@ public class ReplicaServer implements ReplicaServerInterface {
 
 			byte[] buffer = new byte[FileContents.BUFFER_SIZE];
 			for (int i = 1; i <= numOfMsgs; i++) {
-				FileInputStream instream = new FileInputStream(new File(
-						cache_path + txnID + '_' + i));
+				FileInputStream instream = new FileInputStream(new File(cache_path + txnID + '_' + i));
 
 				int len = 0;
 				while ((len = instream.read(buffer)) != -1) {
@@ -159,7 +158,13 @@ public class ReplicaServer implements ReplicaServerInterface {
 		int missedMessagesNumner = (int) numOfMsgs - msgsIDs.length;
 		int[] missedMessages = new int[missedMessagesNumner];
 		int mIndex = 0;
-
+		
+		if(msgsIDs[0] != 1){
+			for (long j = 1; j < msgsIDs[0]; j++) {
+				missedMessages[mIndex++] = (int) j;
+			}
+		}
+		
 		for (int i = 1; i < msgsIDs.length; i++) {
 			if ((msgsIDs[i] - msgsIDs[i - 1]) != 1) {
 				for (long j = msgsIDs[i - 1] + 1; j < msgsIDs[i]; j++) {
@@ -167,6 +172,13 @@ public class ReplicaServer implements ReplicaServerInterface {
 				}
 			}
 		}
+		
+		if(msgsIDs[msgsIDs.length - 1] != numOfMsgs){
+			for (long j = msgsIDs[msgsIDs.length - 1] + 1; j <= numOfMsgs; j++) {
+				missedMessages[mIndex++] = (int) j;
+			}
+		}
+		
 		return missedMessages;
 	}
 
@@ -225,7 +237,12 @@ public class ReplicaServer implements ReplicaServerInterface {
 	
 	public static void main(String[] args) throws RemoteException, AlreadyBoundException, NotBoundException {
 		// running two replica servers
+		System.out.println("starting replica 1 ....");
 		new ReplicaServer("localhost", "1").init("replica1", 5678);
+		System.out.println("Done");
+		
+		System.out.println("starting replica 1 ....");
 		new ReplicaServer("localhost", "2").init("replica2", 5679);
+		System.out.println("Done");
 	}
 }
