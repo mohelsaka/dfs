@@ -370,10 +370,7 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 		
 		final MainServer server = new MainServer("localhost",	System.getProperty("user.home") + "/dfs/dfs2/");
 		server.init(5555);
-		
-		new ReplicaServer("localhost", "1").init("replica1", 5678);
-		new ReplicaServer("localhost", "2").init("replica2", 5679);
-		
+
 		System.out.println("server is running ...");
 	}
 

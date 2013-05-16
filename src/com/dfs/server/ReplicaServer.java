@@ -226,16 +226,15 @@ public class ReplicaServer implements ReplicaServerInterface {
 		registry.rebind(name, serverStub);
 	}
 
-	public static void main(String[] args) throws RemoteException,
-			AlreadyBoundException, NotBoundException,
-			java.rmi.AlreadyBoundException {
-	}
-
 	@Override
 	public int commit(long txnID, long numOfMsgs)
 			throws MessageNotFoundException, RemoteException {
-		// TODO Auto-generated method stub
 		return 0;
 	}
-
+	
+	public static void main(String[] args) throws RemoteException, AlreadyBoundException, NotBoundException {
+		// running two replica servers
+		new ReplicaServer("localhost", "1").init("replica1", 5678);
+		new ReplicaServer("localhost", "2").init("replica2", 5679);
+	}
 }
