@@ -298,8 +298,8 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 		HeartbeatsResponder heartbeatResponderStub = (HeartbeatsResponder) mainServerExportedObject;
 
 		Registry registry = LocateRegistry.createRegistry(port);
-		registry.bind(DFSERVER_UNIQUE_NAME, serverStub);
-		registry.bind(MAIN_SERVER_HEARTBEAT_NAME, heartbeatResponderStub);
+		registry.rebind(DFSERVER_UNIQUE_NAME, serverStub);
+		registry.rebind(MAIN_SERVER_HEARTBEAT_NAME, heartbeatResponderStub);
 		
 		// running transaction time out checker thread
 		transactionsTimeoutChecker.start();
