@@ -1,6 +1,7 @@
 package com.dfs.secondary;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -106,6 +107,8 @@ public class SecondaryServer implements HeartbeatsListener, SecondaryServerInter
 		} catch (AlreadyBoundException e) {
 			e.printStackTrace();
 		} catch (SocketException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}

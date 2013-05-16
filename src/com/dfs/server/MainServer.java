@@ -364,6 +364,7 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 			uniqueName = st.nextToken();
 		}
 	}
+	
 	public static void main(String[] args) throws AlreadyBoundException, NotBoundException,
 			java.rmi.AlreadyBoundException, IOException {
 		
