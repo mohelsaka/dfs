@@ -31,7 +31,7 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 	// default directories
 	String directory_path = System.getProperty("user.home") + "/dfs/";
 	String log_path = directory_path + "log/";
-	private ArrayList<ReplicaServerInfo> replicaservers;
+	private ArrayList<ReplicaServerInfo> replicaservers = new ArrayList<MainServer.ReplicaServerInfo>();
 
 	/**
 	 * Hashtable of all transaction
@@ -79,7 +79,6 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 		}
 		
 		this.clients = new Hashtable<String, ClientInterface>();
-		this.replicaservers = new ArrayList<ReplicaServerInfo>();
 		this.random = new Random(System.currentTimeMillis());
 		
 		// getting access to the secondary server if it is given as paramter
