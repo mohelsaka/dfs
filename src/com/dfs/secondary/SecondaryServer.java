@@ -54,7 +54,7 @@ public class SecondaryServer implements HeartbeatsListener, SecondaryServerInter
 		// register secondary server object to RMI
 		SecondaryServerInterface secondaryServerStub = (SecondaryServerInterface) UnicastRemoteObject.exportObject(this, secondaryServerPort);
 		Registry registry = LocateRegistry.getRegistry();
-		registry.bind(ServerInterface.DFS_SECONDARY_SERVER_UNIQUE_NAME, secondaryServerStub);
+		registry.rebind(ServerInterface.DFS_SECONDARY_SERVER_UNIQUE_NAME, secondaryServerStub);
 		
 		// get connection with currently running main server
 		HeartbeatsResponder mainServerHeartbeats = null;
@@ -85,9 +85,14 @@ public class SecondaryServer implements HeartbeatsListener, SecondaryServerInter
 	@Override
 	public void onReponderFailure(HeartbeatsResponder failedResponder, int id) {
 		try {
+			System.err.println("Main server failure!");
+			System.out.println("Failure recovery routine started ...");
+			
 			MainServer server = new MainServer(logger, clients, transactions, mainServerDirectoryPath);
 			server.init(mainServerPort);
-
+			
+			System.out.println("New main server is now running at " + getLanIPAddress() + ":" + mainServerPort);
+			
 			String ipAddress = getLanIPAddress();
 			
 			// announce the new server ip to all clients
