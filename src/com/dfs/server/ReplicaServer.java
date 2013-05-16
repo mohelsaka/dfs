@@ -73,7 +73,6 @@ public class ReplicaServer implements ReplicaServerInterface {
 		outstream.flush();
 		outstream.close();
 
-
 		return ACK;
 	}
 
@@ -91,8 +90,7 @@ public class ReplicaServer implements ReplicaServerInterface {
 			// convert msgsID to array of Long
 			for (int i = 0; i < msgsIDs.length; i++) {
 				String fname = cachedFiles[(int) i].getName();
-				msgsIDs[i] = Long
-						.parseLong(fname.substring(fname.indexOf('_') + 1));
+				msgsIDs[i] = Long.parseLong(fname.substring(fname.indexOf('_') + 1));
 			}
 
 			// prepare exception to be thrown
@@ -130,19 +128,16 @@ public class ReplicaServer implements ReplicaServerInterface {
 			// TODO: unhandeled yet
 		}
 
-		clearTransaction(txnID, Transaction.COMMITED);
-
+		clearCachedFiles(txnID);
 
 		return ACK;
 	}
 
 	/**
-	 * clear cached files, release file lock and set a new state for the
-	 * transaction
+	 * clear cached files for this transaction
 	 * */
-	private synchronized void clearTransaction(long txnID, int txnNewState) {
-		File[] cachedFiles = new File(cache_path)
-				.listFiles(new CacheFilesFilter(txnID));
+	private void clearCachedFiles(long txnID) {
+		File[] cachedFiles = new File(cache_path).listFiles(new CacheFilesFilter(txnID));
 		for (File file : cachedFiles) {
 			file.delete();
 		}
@@ -194,7 +189,7 @@ public class ReplicaServer implements ReplicaServerInterface {
 	@Override
 	public int abort(long txnID) throws RemoteException {
 		// clear all changes made by this transaction
-		clearTransaction(txnID, Transaction.ABORTED);
+		clearCachedFiles(txnID);
 
 		return ACK;
 	}

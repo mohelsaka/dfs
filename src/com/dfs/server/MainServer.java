@@ -139,13 +139,6 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 		logger.logTransaction(tx, time);
 		transactions.put(txnId, tx);
 		
-		for (ReplicaServerInfo name : replicaservers) {
-			ReplicaServerInterface server = (ReplicaServerInterface) getServer(name);
-			
-			if (server != null)
-				server.newTxn(fileName);
-		}
-		
 		if (secondaryServer != null)
 			secondaryServer.newTxn(fileName, txnId, time);
 		
@@ -171,8 +164,11 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 			if (server != null)
 				server.write(txnID, msgSeqNum, data);
 		}
+		
+		// log this write request
 		long time = System.currentTimeMillis();
 		logger.logWriteRequest(txnID, msgSeqNum, data.length, time);
+		
 		if (secondaryServer != null)
 			secondaryServer.write(txnID, msgSeqNum, data.length, time);
 		
@@ -194,11 +190,14 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 		
 		for (ReplicaServerInfo name : replicaservers) {
 			ReplicaServerInterface server = (ReplicaServerInterface) getServer(name);
+			
 			if (server != null)
 				server.commit(txnID, numOfMsgs, transactions.get(txnID).getFileName());
 		}
 		
+		// update transaction state and log it
 		Transaction tx = transactions.get(txnID);
+		tx.setState(Transaction.COMMITED);
 		long time = System.currentTimeMillis();
 		logger.logTransaction(tx, time);
 		
@@ -228,11 +227,14 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 
 		for (ReplicaServerInfo name : replicaservers) {
 			ReplicaServerInterface server = (ReplicaServerInterface) getServer(name);
+			
 			if (server != null)
 				server.abort(txnID);
 		}
-
+		
+		// update transaction state and log it
 		long time = System.currentTimeMillis();
+		transactions.get(txnID).setState(Transaction.ABORTED);
 		logger.logTransaction(transactions.get(txnID), time);
 
 		if (secondaryServer != null)
