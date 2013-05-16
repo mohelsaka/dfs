@@ -13,8 +13,11 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Random;
+import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.UUID;
 
@@ -43,6 +46,9 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 	 * */
 	private Hashtable<String, ClientInterface> clients = new Hashtable<String, ClientInterface>();
 
+//	private Set<String> fileLocks = Collections.synchronizedSet(new HashSet<String>());
+	private HashSet<String> fileLocks = new HashSet<String>();
+	
 	/**
 	 * Logger instance to log clients interaction with the server
 	 * */
@@ -187,18 +193,25 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 			return ACK;
 		}
 		
+		Transaction tx = transactions.get(txnID);
+		
+		// granting lock on the file name
+		grantFileLock(tx.getFileName());
+		
 		for (ReplicaServerInfo name : replicaservers) {
 			ReplicaServerInterface server = (ReplicaServerInterface) getServer(name);
 			
 			if (server != null)
-				server.commit(txnID, numOfMsgs, transactions.get(txnID).getFileName());
+				server.commit(txnID, numOfMsgs, tx.getFileName());
 		}
 		
 		// update transaction state and log it
-		Transaction tx = transactions.get(txnID);
 		tx.setState(Transaction.COMMITED);
 		long time = System.currentTimeMillis();
 		logger.logTransaction(tx, time);
+		
+		// release file lock
+		releaseFileLock(tx.getFileName());
 		
 		if (secondaryServer != null)
 			secondaryServer.commit(txnID, tx.getFileName(), time);
@@ -318,6 +331,25 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 			replicaservers.add(new ReplicaServerInfo(line));
 		}
 	}
+	
+	private synchronized void grantFileLock(String fileName){
+		System.out.println("trying to grant lock");
+		while(fileLocks.contains(fileName)){
+			try {
+				Thread.sleep(20);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+		fileLocks.add(fileName);
+		System.out.println("lock granted!");
+	}
+	
+	private void releaseFileLock(String fileName){
+		fileLocks.remove(fileName);
+		System.out.println("lock released!");
+	}
+	
 	
 	private Thread transactionsTimeoutChecker = new Thread(new Runnable() {
 		
