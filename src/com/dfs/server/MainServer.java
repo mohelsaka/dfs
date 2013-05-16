@@ -315,8 +315,13 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 				for (Object key : keys) {
 					Transaction t = MainServer.this.transactions.get((Long)key);
 					
+					// clean aborted and commited transactions from transaction hash table
+					if(t.getState() == Transaction.COMMITED || t.getState() == Transaction.ABORTED){
+						MainServer.this.transactions.remove(key);
+					}
+					
 					// check transaction time and state
-					if(t.getState() == Transaction.STARTED && (now - t.getLastEdited()) > idleTimeout){
+					if((now - t.getLastEdited()) > idleTimeout){
 						try {
 							MainServer.this.abort((Long)key);
 						} catch (RemoteException e) {
