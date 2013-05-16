@@ -211,9 +211,9 @@ public class ReplicaServer implements ReplicaServerInterface {
 	public void init(String name, int port) throws RemoteException,
 			java.rmi.AlreadyBoundException {
 		Object mainServerExportedObject = UnicastRemoteObject.exportObject(this, port);
-		ServerInterface serverStub = (ServerInterface) mainServerExportedObject;
+		ReplicaServerInterface serverStub = (ReplicaServerInterface) mainServerExportedObject;
 
-		Registry registry = LocateRegistry.getRegistry();
+		Registry registry = LocateRegistry.createRegistry(port);
 		registry.rebind(name, serverStub);
 	}
 
