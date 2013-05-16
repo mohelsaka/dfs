@@ -60,7 +60,7 @@ public class ReplicaServer implements ReplicaServerInterface {
 
 	@Override
 	public long newTxn(String fileName) throws RemoteException, IOException {
-		return 0;
+		throw new UnsupportedOperationException();
 	}
 
 	@Override
@@ -205,14 +205,14 @@ public class ReplicaServer implements ReplicaServerInterface {
 	@Override
 	public boolean registerClient(ClientInterface client)
 			throws RemoteException {
-		return true;
+		throw new UnsupportedOperationException();
 	}
 
 	@Override
 	public boolean unregisterClient(ClientInterface client)
 			throws RemoteException {
 
-		return true;
+		throw new UnsupportedOperationException();
 
 	}
 
@@ -229,7 +229,7 @@ public class ReplicaServer implements ReplicaServerInterface {
 	@Override
 	public int commit(long txnID, long numOfMsgs)
 			throws MessageNotFoundException, RemoteException {
-		return 0;
+		throw new UnsupportedOperationException();
 	}
 	
 	public static void main(String[] args) throws RemoteException, AlreadyBoundException, NotBoundException {
