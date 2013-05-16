@@ -314,7 +314,9 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 				Object[] keys = MainServer.this.transactions.keySet().toArray();
 				for (Object key : keys) {
 					Transaction t = MainServer.this.transactions.get((Long)key);
-					if(now - t.getLastEdited() > idleTimeout){
+					
+					// check transaction time and state
+					if(t.getState() == Transaction.STARTED && (now - t.getLastEdited()) > idleTimeout){
 						try {
 							MainServer.this.abort((Long)key);
 						} catch (RemoteException e) {
