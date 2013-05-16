@@ -27,7 +27,6 @@ import com.ds.interfaces.ServerInterface;
 public class MainServer implements ServerInterface, HeartbeatsResponder {
 	// default directories
 	String directory_path = System.getProperty("user.home") + "/dfs/";
-	String cache_path = directory_path + "cache/";
 	String log_path = directory_path + "log/";
 	ArrayList<String> replicaservers;
 
@@ -67,15 +66,12 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 		this.clients = clients;
 		this.transactions = transactions;
 		this.random = new Random(System.currentTimeMillis());
-		// creating working directories
-		new File(cache_path).mkdir();
 	}
 
 	public MainServer(String secondaryServerHost, String directoryPath)
 			throws RemoteException, NotBoundException {
 		if (directoryPath != null) {
 			this.directory_path = directoryPath;
-			this.cache_path = directory_path + "cache/";
 			this.log_path = directory_path + "log/";
 		}
 		
@@ -90,7 +86,6 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 		}
 
 		// creating working directories
-		new File(cache_path).mkdir();
 		new File(log_path).mkdir();
 
 		// create logger
