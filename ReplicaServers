@@ -1,0 +1,3 @@
+#hostname	port	replica_unique_name
+localhost	5678	replica1
+localhost	5679	replica2
