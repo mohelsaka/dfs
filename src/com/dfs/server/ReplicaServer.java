@@ -25,10 +25,6 @@ public class ReplicaServer implements ReplicaServerInterface {
 	String cache_path = directory_path + "cache/";
 	String log_path = directory_path + "log/";
 
-
-
-	
-
 	public ReplicaServer(String host, String directoryPath)
 			throws RemoteException, NotBoundException {
 		if (directoryPath != null) {
