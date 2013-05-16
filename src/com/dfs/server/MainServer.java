@@ -48,7 +48,7 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 	 * */
 	private Logger logger;
 	private Random random;
-	private static long idleTimeout = 360000; // 1 minute
+	private static long idleTimeout = 60000; // 1 minute
 
 	// secondary server attributes
 	SecondaryServerInterface secondaryServer;
@@ -71,7 +71,7 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 		this.random = new Random(System.currentTimeMillis());
 	}
 
-	public MainServer(String secondaryServerHost, String directoryPath)
+	public MainServer(String secondaryServerHost, int secondaryServerPort, String directoryPath)
 			throws RemoteException, NotBoundException {
 		if (directoryPath != null) {
 			this.directory_path = directoryPath;
@@ -83,7 +83,7 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 		
 		// getting access to the secondary server if it is given as paramter
 		if (secondaryServerHost != null) {
-			Registry registry = LocateRegistry.getRegistry(secondaryServerHost);
+			Registry registry = LocateRegistry.getRegistry(secondaryServerHost, secondaryServerPort);
 			secondaryServer = (SecondaryServerInterface) registry.lookup(DFS_SECONDARY_SERVER_UNIQUE_NAME);
 		}
 
@@ -369,7 +369,7 @@ public class MainServer implements ServerInterface, HeartbeatsResponder {
 	public static void main(String[] args) throws AlreadyBoundException, NotBoundException,
 			java.rmi.AlreadyBoundException, IOException {
 		
-		final MainServer server = new MainServer("localhost",	System.getProperty("user.home") + "/dfs/dfs2/");
+		final MainServer server = new MainServer("localhost", 4135, System.getProperty("user.home") + "/dfs/dfs2/");
 		server.init(5555);
 
 		System.out.println("server is running ...");

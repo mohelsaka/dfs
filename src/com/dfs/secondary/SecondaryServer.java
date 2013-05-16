@@ -52,8 +52,8 @@ public class SecondaryServer implements HeartbeatsListener, SecondaryServerInter
 	
 	public void init(String currentMainServerHostName, int currentMainServerPort, int secondaryServerPort) throws RemoteException, AlreadyBoundException{
 		// register secondary server object to RMI
+		Registry registry = LocateRegistry.createRegistry(secondaryServerPort);
 		SecondaryServerInterface secondaryServerStub = (SecondaryServerInterface) UnicastRemoteObject.exportObject(this, secondaryServerPort);
-		Registry registry = LocateRegistry.getRegistry();
 		registry.rebind(ServerInterface.DFS_SECONDARY_SERVER_UNIQUE_NAME, secondaryServerStub);
 		
 		// get connection with currently running main server
