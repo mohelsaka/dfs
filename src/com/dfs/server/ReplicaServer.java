@@ -23,20 +23,17 @@ public class ReplicaServer implements ReplicaServerInterface {
 	// default directories
 	String directory_path = System.getProperty("user.home") + "/dfs/";
 	String cache_path = directory_path + "cache/";
-	String log_path = directory_path + "log/";
 
 	public ReplicaServer(String host, String directoryPath)
 			throws RemoteException, NotBoundException {
 		if (directoryPath != null) {
 			this.directory_path += directoryPath+"/";
 			this.cache_path = directory_path + "cache/";
-			this.log_path = directory_path + "log/";
 		}
 		
 		// creating working directories
 		new File(directory_path).mkdir();
 		new File(cache_path).mkdir();
-		new File(log_path).mkdir();
 	}
 
 	@Override
@@ -213,7 +210,6 @@ public class ReplicaServer implements ReplicaServerInterface {
 			throws RemoteException {
 
 		throw new UnsupportedOperationException();
-
 	}
 
 
